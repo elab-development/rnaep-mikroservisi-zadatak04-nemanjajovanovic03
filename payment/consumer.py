@@ -4,33 +4,40 @@ import time
 
 key = 'refund_order'
 group = 'payment-group'
+consumer = 'payment-consumer-1'
 
 try:
-    # mkstream=True kreira stream ako ne postoji
-    redis.xgroup_create(key, group, mkstream=True)
-except:
+    redis.xgroup_create(key, group, id='0', mkstream=True)
+except Exception:
     print('Group already exists!')
 
 while True:
     try:
-        # Koristimo block=5000 da ne trošimo CPU dok nema poruka
-        results = redis.xreadgroup(group, key, {key: '>'}, count=1, block=5000)
+        results = redis.xreadgroup(
+            groupname=group,
+            consumername=consumer,
+            streams={key: '>'},
+            count=1,
+            block=5000
+        )
 
         if results:
             for result in results:
-                # Izvlačenje podataka iz poruke
-                message_data = result[1][0][1]
-                
-                try:
-                    # Tražimo porudžbinu preko PK koji je stigao u poruci
-                    order = Order.get(message_data['pk'])
-                    order.status = 'refunded'
-                    order.save()
-                    print(f"Order {order.pk} successfully refunded.")
-                except Exception as e:
-                    print(f"Could not find order to refund: {e}")
+                messages = result[1]
+
+                for message_id, message_data in messages:
+                    try:
+                        order = Order.get(message_data['pk'])
+                        order.status = 'refunded'
+                        order.save()
+
+                        print(f"Order {order.pk} successfully refunded.")
+
+                    except Exception as e:
+                        print(f"Could not find order to refund: {e}")
+
+                    redis.xack(key, group, message_id)
 
     except Exception as e:
         print(f"Consumer error: {e}")
-    
-    time.sleep(1)
+        time.sleep(3)
