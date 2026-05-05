@@ -1,0 +1,58 @@
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  inventory:
+    build: ./inventory
+    container_name: inventory
+    env_file:
+      - ./inventory/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  payment:
+    build: ./payment
+    container_name: payment
+    env_file:
+      - ./payment/.env
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - inventory
+
+  inventory_consumer:
+    build: ./inventory
+    container_name: inventory_consumer
+    env_file:
+      - ./inventory/.env
+    command: python consumer.py
+    depends_on:
+      - redis
+      - inventory
+    restart: unless-stopped
+
+  payment_consumer:
+    build: ./payment
+    container_name: payment_consumer
+    env_file:
+      - ./payment/.env
+    command: python consumer.py
+    depends_on:
+      - redis
+      - payment
+    restart: unless-stopped
+
+  notification:
+    build: ./notification
+    container_name: notification
+    env_file:
+      - ./notification/.env
+    depends_on:
+      - redis
+    restart: unless-stopped

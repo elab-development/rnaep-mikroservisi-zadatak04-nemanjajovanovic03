@@ -1,0 +1,3 @@
+redis
+pydantic-settings
+python-dotenv

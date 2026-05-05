@@ -3,13 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis_om import HashModel, NotFoundError
 from database import redis  # Uvozimo spremnu konekciju
 from typing import List
+from settings import settings
 
 app = FastAPI(title="Inventory Service")
 
-#Treba nam CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:3000'],
+    allow_origins=settings.cors_allow_origins.split(","),
     allow_methods=['*'],
     allow_headers=['*']
 )
